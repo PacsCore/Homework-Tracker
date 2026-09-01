@@ -27,7 +27,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // --- Password-Logic ---
-const CORRECT_PASSWORD = "8B"; // correct password
+const CORRECT_PASSWORD = "8b"; // correct password
 
 const lockScreen = document.getElementById("lock-screen");
 const appDiv = document.getElementById("app");
@@ -36,7 +36,7 @@ const unlockBtn = document.getElementById("unlock-btn");
 const errorMsg = document.getElementById("error-msg");
 
 function unlock() {
-  if (passwordInput.value === CORRECT_PASSWORD) {
+  if (passwordInput.value.toLowerCase() === CORRECT_PASSWORD.toLowerCase()) {
     lockScreen.classList.add("hidden");
     appDiv.classList.remove("hidden");
     sessionStorage.setItem("unlocked", "true");
