@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homework Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+    <div id="lock-screen" class="overlay">
+      <div id="lock-box">
+        <h1>🔒 Homework Tracker</h1>
+        <p>Enter your passcode to access the homework tracker</p>
+        <input type="password" id="passcode-input" placeholder="Enter your passcode">
+        <button id="unlock-btn">Unlock</button>
+        <p id="error-msg" class="error"></p>
+      </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <header>
+            <h1>Homework's</h1>
+        </header>
+
+        <form id="entry-form">
+            <input type="text" id="subject-input" placeholder="Subject (e.g English)" required>
+            <textarea id="hw-input" placeholder="What homework do you have, bro?" required></textarea>
+            <button type="submit">Add Homework</button>
+        </form>
+
+        <ul id="hw-list"></ul>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
