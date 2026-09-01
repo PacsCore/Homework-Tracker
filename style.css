@@ -6,7 +6,7 @@
 }
 
 body{
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #cbd5e1, #1e3a5f);
     min-height: 100vh;
 }
 
@@ -69,14 +69,14 @@ body{
     border: none;
     border-radius: 8px;
     font-size: 1rem;
-    background: #667eea;
+    background: #1e3a5f;
     color: white;
     cursor: pointer;
     transition: background 0.3s;
 }
 
 .lock-box button:hover{
-    background: #5a67d8;
+    background: #0f2744;
 }
 
 .error{
@@ -118,7 +118,7 @@ header h1{
 
 #entry-form button{
     padding: 12px;
-    background: #667eea;
+    background: #1e3a5f;
     color: white;
     border: none;
     border-radius: 8px;
@@ -127,7 +127,7 @@ header h1{
 }
 
 #entry-form button:hover{
-    background: #5568d3;
+    background: #0f2744;
 }
 
 #hw-list{
@@ -149,7 +149,7 @@ header h1{
 
 .hw-item-content .subject{
     font-weight: bold;
-    color: #667eea;
+    color: #1e3a5f;
     display: block;
     margin-bottom: 4px;
 }
