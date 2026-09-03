@@ -4,6 +4,7 @@ import {
   getFirestore,
   collection,
   addDoc,
+  updateDoc,
   deleteDoc,
   doc,
   onSnapshot,
@@ -22,12 +23,16 @@ const firebaseConfig = {
   appId: "1:914966951850:web:a99a178f57a7f0d51b9dd3"
 };
 
+// Cloudinary config
+const CLOUDINARY_CLOUD_NAME = "t1npa7rj";
+const CLOUDINARY_UPLOAD_PRESET = "hue_tracker";
+
 // start Firebase & Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // --- Password-Logic ---
-const CORRECT_PASSWORD = "8b"; // correct password
+const CORRECT_PASSWORD = "8B";
 
 const lockScreen = document.getElementById("lock-screen");
 const appDiv = document.getElementById("app");
@@ -36,7 +41,7 @@ const unlockBtn = document.getElementById("unlock-btn");
 const errorMsg = document.getElementById("error-msg");
 
 function unlock() {
-  if (passwordInput.value.toLowerCase() === CORRECT_PASSWORD.toLowerCase()) {
+  if (passwordInput.value.trim().toLowerCase() === CORRECT_PASSWORD.toLowerCase()) {
     lockScreen.classList.add("hidden");
     appDiv.classList.remove("hidden");
     sessionStorage.setItem("unlocked", "true");
@@ -50,59 +55,167 @@ passwordInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") unlock();
 });
 
-// already unlocked in this browser session? then don't ask again
 if (sessionStorage.getItem("unlocked") === "true") {
   lockScreen.classList.add("hidden");
   appDiv.classList.remove("hidden");
 }
 
-// --- add homework ---
+// --- Form elements ---
 const form = document.getElementById("entry-form");
 const subjectInput = document.getElementById("subject-input");
 const hwInput = document.getElementById("hw-input");
+const fileInput = document.getElementById("file-input");
+const submitBtn = document.getElementById("submit-btn");
+const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
+// tracks whether we're editing an existing entry (null = adding new)
+let editingId = null;
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function isImageFile(file) {
+  return /\.(jpe?g|png|gif|webp)$/i.test(file.name || file.url || "");
+}
+
+// --- upload one file to Cloudinary, returns {url, name} ---
+async function uploadToCloudinary(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+    { method: "POST", body: formData }
+  );
+
+  const data = await response.json();
+  if (!response.ok || !data.secure_url) {
+    throw new Error(data.error?.message || "Upload failed");
+  }
+  return { url: data.secure_url, name: file.name };
+}
+
+// --- add or update homework ---
 form.addEventListener("submit", async (e) => {
-  e.preventDefault(); // prevent page reload
+  e.preventDefault();
 
-  await addDoc(collection(db, "homework"), {
-    subject: subjectInput.value,
-    text: hwInput.value,
-    createdAt: serverTimestamp()
-  });
+  submitBtn.disabled = true;
+  submitBtn.textContent = fileInput.files.length ? "Uploading..." : "Saving...";
 
-  form.reset(); // clear form after submitting
+  try {
+    const files = Array.from(fileInput.files);
+    const uploadedFiles = await Promise.all(files.map(uploadToCloudinary));
+
+    if (editingId) {
+      const updateData = {
+        subject: subjectInput.value,
+        text: hwInput.value
+      };
+      // only overwrite files if the user picked new ones
+      if (uploadedFiles.length > 0) {
+        updateData.files = uploadedFiles;
+      }
+      await updateDoc(doc(db, "homework", editingId), updateData);
+      exitEditMode();
+    } else {
+      await addDoc(collection(db, "homework"), {
+        subject: subjectInput.value,
+        text: hwInput.value,
+        files: uploadedFiles,
+        createdAt: serverTimestamp()
+      });
+      form.reset();
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Couldn't save homework. Please try again.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = editingId ? "Update Homework" : "Add Homework";
+  }
 });
+
+function exitEditMode() {
+  editingId = null;
+  submitBtn.textContent = "Add Homework";
+  cancelEditBtn.classList.add("hidden");
+  form.reset();
+}
+
+cancelEditBtn.addEventListener("click", exitEditMode);
 
 // --- show live list ---
 const hwList = document.getElementById("hw-list");
 const q = query(collection(db, "homework"), orderBy("createdAt", "desc"));
 
 onSnapshot(q, (snapshot) => {
-  hwList.innerHTML = ""; // clear list, then rebuild
+  hwList.innerHTML = "";
 
   snapshot.forEach((docSnap) => {
     const data = docSnap.data();
     const id = docSnap.id;
+    const files = data.files || [];
+
+    // build the attachments HTML: images as thumbnails, other files as links
+    const attachmentsHtml = files.map((file) => {
+      const name = escapeHtml(file.name || "file");
+      const url = (file.url || "").startsWith("https://") ? escapeHtml(file.url) : "";
+      if (isImageFile(file)) {
+        return `<img src="${url}" class="file-thumb" alt="${name}">`;
+      }
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="file-link">📄 ${name}</a>`;
+    }).join("");
 
     const li = document.createElement("li");
     li.className = "hw-item";
     li.innerHTML = `
-      <div class="hw-item-content">
-        <span class="subject">${data.subject}</span>
-        <span>${data.text}</span>
-        <span class="date">${data.createdAt ? data.createdAt.toDate().toLocaleString("de-AT") : "just now"}</span>
+      <div class="hw-item-top">
+        <div class="hw-item-content">
+          <span class="subject">${escapeHtml(data.subject)}</span>
+          <span>${escapeHtml(data.text)}</span>
+          <span class="date">${data.createdAt ? data.createdAt.toDate().toLocaleString("de-AT") : "just now"}</span>
+        </div>
+        <div class="hw-item-actions">
+          <button class="edit-btn" data-id="${id}" aria-label="Edit homework">✏️</button>
+          <button class="delete-btn" data-id="${id}" aria-label="Delete homework">🗑️</button>
+        </div>
       </div>
-      <button class="delete-btn" data-id="${id}">🗑️</button>
+      ${attachmentsHtml ? `<div class="file-attachments">${attachmentsHtml}</div>` : ""}
     `;
 
     hwList.appendChild(li);
   });
 
-    // connect delete buttons with function
+  // delete buttons
   document.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
       await deleteDoc(doc(db, "homework", id));
+    });
+  });
+
+  // edit buttons
+  document.querySelectorAll(".edit-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-id");
+      const docSnapshot = snapshot.docs.find((d) => d.id === id);
+      const data = docSnapshot.data();
+
+      subjectInput.value = data.subject;
+      hwInput.value = data.text;
+
+      editingId = id;
+      submitBtn.textContent = "Update Homework";
+      cancelEditBtn.classList.remove("hidden");
+
+      // scroll form into view, handy on mobile
+      form.scrollIntoView({ behavior: "smooth" });
     });
   });
 });
