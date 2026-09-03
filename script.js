@@ -149,13 +149,6 @@ function exitEditMode() {
 cancelEditBtn.addEventListener("click", exitEditMode);
 
 const hwList = document.getElementById("hw-list");
-hwList.addEventListener("click", (e) => {
-  const link = e.target.closest("a");
-  if (!link || !hwList.contains(link)) return;
-  // #region agent log
-  fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'C,E',location:'script.js:click',message:'attachment-click',data:{hrefLen:(link.getAttribute('href')||'').length,hrefHttps:(link.getAttribute('href')||'').startsWith('https://'),hasThumb:!!link.querySelector('.file-thumb'),isFileLink:link.classList.contains('file-link'),targetTag:e.target.tagName},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-});
 const q = query(collection(db, "homework"), orderBy("createdAt", "desc"));
 
 onSnapshot(q, (snapshot) => {
@@ -168,13 +161,8 @@ onSnapshot(q, (snapshot) => {
     // build the attachments HTML: images as thumbnails, other files as links
     const attachmentsHtml = files.map((file) => {
       const name = escapeHtml(file.name || "file");
-      const rawUrl = file.url || "";
-      const url = rawUrl.startsWith("https://") ? escapeHtml(rawUrl) : "";
-      const isImage = isImageFile(file);
-      // #region agent log
-      fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'A,B,D',location:'script.js:attachments',message:'file-render',data:{isImage,hasName:!!file.name,nameExt:(file.name||'').split('.').pop()||'',urlLen:rawUrl.length,isHttps:rawUrl.startsWith('https://'),hrefEmpty:!url,hasImageUpload:rawUrl.includes('/image/upload/'),hasRawUpload:rawUrl.includes('/raw/upload/')},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      if (isImage) {
+      const url = (file.url || "").startsWith("https://") ? escapeHtml(file.url) : "";
+      if (isImageFile(file)) {
         return `<a href="${url}" target="_blank" rel="noopener noreferrer">
           <img src="${url}" class="file-thumb" alt="${name}">
         </a>`;
@@ -201,11 +189,6 @@ onSnapshot(q, (snapshot) => {
 
     hwList.appendChild(li);
   });
-
-  // #region agent log
-  const renderedLinks = hwList.querySelectorAll("a");
-  fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'A,E',location:'script.js:onSnapshot',message:'attachment-dom',data:{linkCount:renderedLinks.length,emptyHref:[...renderedLinks].filter((a)=>!(a.getAttribute('href')||'').trim()).length,thumbCount:hwList.querySelectorAll('.file-thumb').length,fileLinkCount:hwList.querySelectorAll('a.file-link').length},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   // delete buttons
   document.querySelectorAll(".delete-btn").forEach((btn) => {
