@@ -13,7 +13,7 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
-// your Firebase-Config
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyB-3-Piwnoda_cO0dzKhHt25OikGOXxzZk",
   authDomain: "klassen-hue-tracker.firebaseapp.com",
@@ -23,7 +23,7 @@ const firebaseConfig = {
   appId: "1:914966951850:web:a99a178f57a7f0d51b9dd3"
 };
 
-// Cloudinary config
+// Cloudinary
 const CLOUDINARY_CLOUD_NAME = "t1npa7rj";
 const CLOUDINARY_UPLOAD_PRESET = "hue_tracker";
 
@@ -31,7 +31,7 @@ const CLOUDINARY_UPLOAD_PRESET = "hue_tracker";
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// --- Password-Logic ---
+// password
 const CORRECT_PASSWORD = "8B";
 
 const lockScreen = document.getElementById("lock-screen");
@@ -41,7 +41,11 @@ const unlockBtn = document.getElementById("unlock-btn");
 const errorMsg = document.getElementById("error-msg");
 
 function unlock() {
-  if (passwordInput.value.trim().toLowerCase() === CORRECT_PASSWORD.toLowerCase()) {
+  const matched = passwordInput.value.trim().toLowerCase() === CORRECT_PASSWORD.toLowerCase();
+  // #region agent log
+  fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'B',location:'script.js:unlock',message:'unlock-attempt',data:{matched,inputLen:passwordInput.value.trim().length,hasPasswordInput:!!passwordInput,hasLockScreen:!!lockScreen,hasAppDiv:!!appDiv},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  if (matched) {
     lockScreen.classList.add("hidden");
     appDiv.classList.remove("hidden");
     sessionStorage.setItem("unlocked", "true");
@@ -60,7 +64,6 @@ if (sessionStorage.getItem("unlocked") === "true") {
   appDiv.classList.remove("hidden");
 }
 
-// --- Form elements ---
 const form = document.getElementById("entry-form");
 const subjectInput = document.getElementById("subject-input");
 const hwInput = document.getElementById("hw-input");
@@ -68,7 +71,11 @@ const fileInput = document.getElementById("file-input");
 const submitBtn = document.getElementById("submit-btn");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
-// tracks whether we're editing an existing entry (null = adding new)
+// #region agent log
+fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'A',location:'script.js:init',message:'dom-elements',data:{form:!!form,subjectInput:!!subjectInput,hwInput:!!hwInput,fileInput:!!fileInput,submitBtn:!!submitBtn,cancelEditBtn:!!cancelEditBtn,lockScreen:!!lockScreen,unlockBtn:!!unlockBtn,passwordInput:!!passwordInput},timestamp:Date.now()})}).catch(()=>{});
+// #endregion
+
+// editing
 let editingId = null;
 
 function escapeHtml(str) {
@@ -101,12 +108,16 @@ async function uploadToCloudinary(file) {
   return { url: data.secure_url, name: file.name };
 }
 
-// --- add or update homework ---
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+  const fileCount = fileInput ? fileInput.files.length : null;
+  // #region agent log
+  fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'C',location:'script.js:submit',message:'submit-start',data:{editingId,fileCount,hasFileInput:!!fileInput,hasSubmitBtn:!!submitBtn},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
   submitBtn.disabled = true;
-  submitBtn.textContent = fileInput.files.length ? "Uploading..." : "Saving...";
+  submitBtn.textContent = fileCount ? "Uploading..." : "Saving...";
 
   try {
     const files = Array.from(fileInput.files);
@@ -132,7 +143,13 @@ form.addEventListener("submit", async (e) => {
       });
       form.reset();
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'C',location:'script.js:submit',message:'submit-ok',data:{fileCount,uploadedCount:uploadedFiles.length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   } catch (err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'C',location:'script.js:submit',message:'submit-error',data:{error:String(err&&err.message||err)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     console.error(err);
     alert("Couldn't save homework. Please try again.");
   } finally {
@@ -150,18 +167,19 @@ function exitEditMode() {
 
 cancelEditBtn.addEventListener("click", exitEditMode);
 
-// --- show live list ---
 const hwList = document.getElementById("hw-list");
 const q = query(collection(db, "homework"), orderBy("createdAt", "desc"));
 
 onSnapshot(q, (snapshot) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'D',location:'script.js:onSnapshot',message:'snapshot-ok',data:{size:snapshot.size,hasHwList:!!hwList},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   hwList.innerHTML = "";
 
   snapshot.forEach((docSnap) => {
     const data = docSnap.data();
     const id = docSnap.id;
     const files = data.files || [];
-
     // build the attachments HTML: images as thumbnails, other files as links
     const attachmentsHtml = files.map((file) => {
       const name = escapeHtml(file.name || "file");
@@ -205,6 +223,9 @@ onSnapshot(q, (snapshot) => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
       const docSnapshot = snapshot.docs.find((d) => d.id === id);
+      // #region agent log
+      fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'E',location:'script.js:edit',message:'edit-click',data:{found:!!docSnapshot,idLen:id?id.length:0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       const data = docSnapshot.data();
 
       subjectInput.value = data.subject;
@@ -214,8 +235,11 @@ onSnapshot(q, (snapshot) => {
       submitBtn.textContent = "Update Homework";
       cancelEditBtn.classList.remove("hidden");
 
-      // scroll form into view, handy on mobile
       form.scrollIntoView({ behavior: "smooth" });
     });
   });
+}, (err) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7539/ingest/0bec041f-bb7d-4ad4-8c1c-10ef99175107',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f997bd'},body:JSON.stringify({sessionId:'f997bd',runId:'pre-fix',hypothesisId:'D',location:'script.js:onSnapshot',message:'snapshot-error',data:{error:String(err&&err.message||err)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 });
